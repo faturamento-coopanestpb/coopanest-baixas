@@ -639,8 +639,19 @@
                         params.append(key, val !== undefined && val !== null ? val : '');
                     }
                 }
-                await fetch(`${API_URL}?${params.toString()}`);
-                document.getElementById('statusSync').innerText = "Sincronizado";
+                
+                // Garante que o separador correto (? ou &) seja usado dependendo da URL
+                let separador = API_URL.includes('?') ? '&' : '?';
+                let urlFinal = `${API_URL}${separador}${params.toString()}`;
+
+                let res = await fetch(urlFinal);
+                let json = await res.json();
+                
+                if(json.status === "sucesso" || json.baixas || json.status === "ok") {
+                    document.getElementById('statusSync').innerText = "Sincronizado";
+                } else {
+                    document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
+                }
             } catch(e) {
                 console.error(e);
                 document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
