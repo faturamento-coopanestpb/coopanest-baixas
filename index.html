@@ -642,23 +642,6 @@
                 document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
             }
         }
-                
-                // Constrói a URL de forma limpa garantindo o uso correto do '?'
-                let urlFinal = `${API_URL}?${params.toString()}`;
-
-                let res = await fetch(urlFinal);
-                let json = await res.json();
-                
-                if(json.status === "sucesso" || json.baixas || json.status === "ok") {
-                    document.getElementById('statusSync').innerText = "Sincronizado";
-                } else {
-                    document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
-                }
-            } catch(e) {
-                console.error(e);
-                document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
-            }
-        }
 
         function inicializarPeriodos() {
             const select = document.getElementById('selectPeriodo');
@@ -755,7 +738,7 @@
                     periodosFechados.push(periodoFechadoAgora);
                 }
                 
-                await enviarDadosNuvem({ action: "salvarPeriodosFechados", periodos: JSON.stringify(periodosFechados) });
+                await enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) });
 
                 let indexAtual = periodos.indexOf(periodoFechadoAgora);
                 if (indexAtual > 0) {
@@ -796,7 +779,7 @@
             let index = periodosFechados.indexOf(periodoAlvo);
             if (index > -1) {
                 periodosFechados.splice(index, 1);
-                enviarDadosNuvem({ action: "salvarPeriodosFechados", periodos: JSON.stringify(periodosFechados) });
+                enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) });
                 alert(`Período ${periodoAlvo} reaberto com sucesso!`);
                 atualizarSelectReabrir();
                 inicializarPeriodos();
@@ -853,7 +836,7 @@
             ordenarConvenios();
             carregarSelectConvenios();
             atualizarTabelaConvenios();
-            enviarDadosNuvem({ action: "salvarConvenios", lista: JSON.stringify(listaConvenios) });
+            enviarDadosNuvem({ action: "salvarConvenios", lista: listaConvenios });
         }
 
         document.getElementById('formConvenio').addEventListener('submit', function(e) {
@@ -869,7 +852,7 @@
             atualizarTabelaConvenios();
             this.reset();
             document.getElementById('covAtivo').checked = true;
-            enviarDadosNuvem({ action: "salvarConvenios", lista: JSON.stringify(listaConvenios) });
+            enviarDadosNuvem({ action: "salvarConvenios", lista: listaConvenios });
             alert('Convênio adicionado e sincronizado com a nuvem!');
         });
 
@@ -878,7 +861,7 @@
             let novaSenha = document.getElementById('inputNovaSenha').value.trim();
             if(novaSenha) {
                 senhaExclusao = novaSenha;
-                enviarDadosNuvem({ action: "salvarSenha", senha: senhaExclusao });
+                enviarDadosNuvem({ action: "salvarConfig", chave: "senhaExclusao", valor: senhaExclusao });
                 alert('Senha enviada e salva na nuvem com sucesso!');
                 this.reset();
             }
@@ -906,19 +889,7 @@
             enviarDadosNuvem({
                 action: "salvarBaixa",
                 periodo: periodoAtual,
-                id: item.id,
-                convenio: item.convenio,
-                notaFiscal: item.notaFiscal,
-                dataRec: item.dataRec,
-                vlrBruto: item.vlrBruto,
-                vlrLiquido: item.vlrLiquido,
-                tipo: item.tipo,
-                cobrado: item.cobrado,
-                recebido: item.recebido,
-                glosa: item.glosa,
-                baixado: item.baixado,
-                difBaixa: item.difBaixa,
-                obs: item.obs
+                item: item
             });
             alert('Lançamento salvo e sincronizado!');
         });
@@ -971,19 +942,7 @@
             enviarDadosNuvem({
                 action: "salvarBaixa",
                 periodo: periodoAtual,
-                id: regs[index].id,
-                convenio: regs[index].convenio,
-                notaFiscal: regs[index].notaFiscal,
-                dataRec: regs[index].dataRec,
-                vlrBruto: regs[index].vlrBruto,
-                vlrLiquido: regs[index].vlrLiquido,
-                tipo: regs[index].tipo,
-                cobrado: regs[index].cobrado,
-                recebido: regs[index].recebido,
-                glosa: regs[index].glosa,
-                baixado: regs[index].baixado,
-                difBaixa: regs[index].difBaixa,
-                obs: regs[index].obs
+                item: regs[index]
             });
             alert('Baixa atualizada e salva na nuvem!');
             atualizarTabelaBaixas();
@@ -1180,9 +1139,8 @@
             });
         }
 
-        // Inicializar
+        // Inicializar com segurança
         carregarDadosNuvem();
-        setInterval(carregarDadosNuvem, 30000);
     </script>
 </body>
 </html>
