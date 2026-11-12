@@ -510,7 +510,7 @@
         ];
 
         let periodos = ["202610", "202611"];
-        let periodoAtual = "202610";
+        let periodoAtual = localStorage.getItem("coopanest_periodo_ativo") || "202610";
         let baseDadosBaixas = {};
         let periodosFechados = [];
         let senhaExclusao = "";
@@ -677,17 +677,13 @@
             const select = document.getElementById('selectPeriodo');
             if(!select) return;
 
-            let periodoSelecionadoAntes = select.value;
-
             let chavesDinamicas = Object.keys(baseDadosBaixas);
             let todos = [...periodos, ...chavesDinamicas];
 
             periodos = [...new Set(todos.map(p => p ? p.toString().trim() : '').filter(p => p.length > 0))];
             periodos.sort().reverse();
 
-            if (periodoSelecionadoAntes && periodos.includes(periodoSelecionadoAntes)) {
-                periodoAtual = periodoSelecionadoAntes;
-            } else if (!periodos.includes(periodoAtual) && periodos.length > 0) {
+            if (!periodos.includes(periodoAtual) && periodos.length > 0) {
                 periodoAtual = periodos[0];
             }
 
@@ -700,6 +696,7 @@
                 select.appendChild(opt);
             });
 
+            localStorage.setItem("coopanest_periodo_ativo", periodoAtual);
             verificarBloqueioPeriodoAtual();
         }
 
@@ -739,6 +736,7 @@
 
         function mudarPeriodo(novoPeriodo) {
             periodoAtual = novoPeriodo;
+            localStorage.setItem("coopanest_periodo_ativo", periodoAtual);
             inicializarPeriodos();
             atualizarTabelaBaixas();
         }
@@ -784,6 +782,7 @@
                     periodos.push(proximoPeriodo);
                 }
                 periodoAtual = proximoPeriodo;
+                localStorage.setItem("coopanest_periodo_ativo", periodoAtual);
 
                 enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) }, function() {
                     alert(`Período ${periodoFechadoAgora} fechado e salvo com sucesso! A tela avançou para o período ${periodoAtual}.`);
