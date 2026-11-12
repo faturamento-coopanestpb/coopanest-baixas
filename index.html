@@ -628,17 +628,20 @@
         }
 
         async function enviarDadosNuvem(payload) {
-            if(API_URL.includes("SUA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI")) return;
+            if(API_URL.includes("https://script.google.com/macros/s/AKfycbz4673aZVdvwuvkPYBW0hpM1va1urHN9xfKNnyU5MYe_pjszNbtK1U2AobmNCY-eA0POg/exec")) return;
             try {
-                let params = new URLSearchParams();
-                for (let key in payload) {
-                    let val = payload[key];
-                    if (typeof val === 'object' && val !== null) {
-                        params.append(key, JSON.stringify(val));
-                    } else {
-                        params.append(key, val !== undefined && val !== null ? val : '');
-                    }
-                }
+                let res = await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                document.getElementById('statusSync').innerText = "Sincronizado";
+            } catch(e) {
+                console.error(e);
+                document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
+            }
+        }
                 
                 // Constrói a URL de forma limpa garantindo o uso correto do '?'
                 let urlFinal = `${API_URL}?${params.toString()}`;
