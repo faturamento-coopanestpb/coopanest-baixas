@@ -41,6 +41,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
         }
         .period-selector select, .period-selector button {
             padding: 4px 8px;
@@ -219,7 +220,8 @@
                 <label style="color:white; margin:0; font-size:12px;">Período:</label>
                 <select id="selectPeriodo" onchange="mudarPeriodo(this.value)"></select>
                 <button onclick="criarNovoPeriodo()" style="background:var(--accent); color:white; font-weight:bold; cursor:pointer;">+ Novo</button>
-                <button onclick="fecharPeriodoAtual()" id="btnFecharPeriodo" style="background:#e76f51; color:white; font-weight:bold; cursor:pointer;" title="Fechar período com senha adm">🔒 Fechar Período</button>
+                <button onclick="fecharPeriodoAtual()" id="btnFecharPeriodo" style="background:#e76f51; color:white; font-weight:bold; cursor:pointer;" title="Fechar período com senha adm">🔒 Fechar</button>
+                <button onclick="abrirPeriodoAtual()" id="btnAbrirPeriodo" style="background:#2a9d8f; color:white; font-weight:bold; cursor:pointer;" title="Abrir período fechado com senha adm">🔓 Abrir Período</button>
             </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
@@ -777,6 +779,7 @@
                     periodosFechados.push(periodoFechadoAgora);
                 }
                 
+                // Avança obrigatoriamente para o próximo período em aberto
                 let proximoPeriodo = calcularProximoPeriodo(periodoFechadoAgora);
                 if (!periodos.includes(proximoPeriodo)) {
                     periodos.push(proximoPeriodo);
@@ -785,7 +788,29 @@
                 localStorage.setItem("coopanest_periodo_ativo", periodoAtual);
 
                 enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) }, function() {
-                    alert(`Período ${periodoFechadoAgora} fechado e salvo com sucesso! A tela avançou para o período ${periodoAtual}.`);
+                    alert(`Período ${periodoFechadoAgora} fechado com sucesso! O sistema avançou para o próximo período: ${periodoAtual}.`);
+                    carregarDadosNuvem();
+                });
+            } else {
+                alert("Senha mestre incorreta!");
+            }
+        }
+
+        function abrirPeriodoAtual() {
+            if (!periodosFechados.includes(periodoAtual)) {
+                alert("Este período já está aberto!");
+                return;
+            }
+            let senha = prompt(`Para reabrir o período ${periodoAtual} e permitir edições, digite a senha mestre de administrador:`);
+            if (senha === null) return;
+            if (senha.trim() === SENHA_MESTRE_ADM) {
+                let index = periodosFechados.indexOf(periodoAtual);
+                if (index > -1) {
+                    periodosFechados.splice(index, 1);
+                }
+
+                enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) }, function() {
+                    alert(`Período ${periodoAtual} reaberto com sucesso para ajustes!`);
                     carregarDadosNuvem();
                 });
             } else {
