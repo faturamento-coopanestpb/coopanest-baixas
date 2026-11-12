@@ -633,11 +633,15 @@
             document.body.appendChild(script);
         }
 
-        function enviarDadosNuvem(payload) {
-            if(API_URL.includes("SUA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI")) return;
+        function enviarDadosNuvem(payload, callbackAposSucesso) {
+            if(API_URL.includes("SUA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI")) {
+                if(callbackAposSucesso) callbackAposSucesso();
+                return;
+            }
 
             window.processarRespostaEnvio = function(res) {
                 document.getElementById('statusSync').innerText = "Sincronizado";
+                if(callbackAposSucesso) callbackAposSucesso();
             };
 
             let params = new URLSearchParams();
@@ -664,6 +668,7 @@
             script.src = `${API_URL}?${params.toString()}`;
             script.onerror = function() {
                 document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
+                if(callbackAposSucesso) callbackAposSucesso();
             };
             document.body.appendChild(script);
         }
@@ -774,18 +779,16 @@
                     periodosFechados.push(periodoFechadoAgora);
                 }
                 
-                enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) });
-
-                // Calcula automaticamente o próximo período (Ex: 202610 -> 202611)
                 let proximoPeriodo = calcularProximoPeriodo(periodoFechadoAgora);
                 if (!periodos.includes(proximoPeriodo)) {
                     periodos.push(proximoPeriodo);
                 }
                 periodoAtual = proximoPeriodo;
 
-                alert(`Período ${periodoFechadoAgora} fechado com sucesso! A tela foi atualizada para o próximo período: ${periodoAtual}.`);
-                inicializarPeriodos();
-                atualizarTabelaBaixas();
+                enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) }, function() {
+                    alert(`Período ${periodoFechadoAgora} fechado e salvo com sucesso! A tela avançou para o período ${periodoAtual}.`);
+                    carregarDadosNuvem();
+                });
             } else {
                 alert("Senha mestre incorreta!");
             }
@@ -817,11 +820,11 @@
             let index = periodosFechados.indexOf(periodoAlvo);
             if (index > -1) {
                 periodosFechados.splice(index, 1);
-                enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) });
-                alert(`Período ${periodoAlvo} reaberto com sucesso!`);
+                enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) }, function() {
+                    alert(`Período ${periodoAlvo} reaberto com sucesso!`);
+                    carregarDadosNuvem();
+                });
                 atualizarSelectReabrir();
-                inicializarPeriodos();
-                atualizarTabelaBaixas();
             }
         }
 
@@ -890,8 +893,9 @@
             atualizarTabelaConvenios();
             this.reset();
             document.getElementById('covAtivo').checked = true;
-            enviarDadosNuvem({ action: "salvarConvenios", lista: listaConvenios });
-            alert('Convênio adicionado e sincronizado com a nuvem!');
+            enviarDadosNuvem({ action: "salvarConvenios", lista: listaConvenios }, function() {
+                alert('Convênio adicionado e sincronizado com a nuvem!');
+            });
         });
 
         document.getElementById('formSenha').addEventListener('submit', function(e) {
@@ -899,8 +903,9 @@
             let novaSenha = document.getElementById('inputNovaSenha').value.trim();
             if(novaSenha) {
                 senhaExclusao = novaSenha;
-                enviarDadosNuvem({ action: "salvarConfig", chave: "senhaExclusao", valor: senhaExclusao });
-                alert('Senha enviada e salva na nuvem com sucesso!');
+                enviarDadosNuvem({ action: "salvarConfig", chave: "senhaExclusao", valor: senhaExclusao }, function() {
+                    alert('Senha enviada e salva na nuvem com sucesso!');
+                });
                 this.reset();
             }
         });
@@ -928,8 +933,10 @@
                 action: "salvarBaixa",
                 periodo: periodoAtual,
                 item: item
+            }, function() {
+                alert('Lançamento salvo e sincronizado com a nuvem!');
+                carregarDadosNuvem();
             });
-            alert('Lançamento salvo e sincronizado!');
         });
 
         function calcularLinha(index) {
@@ -981,9 +988,10 @@
                 action: "salvarBaixa",
                 periodo: periodoAtual,
                 item: regs[index]
+            }, function() {
+                alert('Baixa atualizada e salva na nuvem com sucesso!');
+                carregarDadosNuvem();
             });
-            alert('Baixa atualizada e salva na nuvem!');
-            atualizarTabelaBaixas();
         }
 
         function excluirLinha(index) {
@@ -1003,9 +1011,10 @@
                 let regs = obterRegistrosAtuais();
                 let itemId = regs[index].id;
                 regs.splice(index, 1);
-                enviarDadosNuvem({ action: "excluirBaixa", id: itemId });
-                atualizarTabelaBaixas();
-                alert("Registro excluído com sucesso.");
+                enviarDadosNuvem({ action: "excluirBaixa", id: itemId }, function() {
+                    alert("Registro excluído com sucesso.");
+                    carregarDadosNuvem();
+                });
             } else {
                 alert("Senha incorreta!");
             }
