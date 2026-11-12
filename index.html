@@ -633,20 +633,39 @@
             document.body.appendChild(script);
         }
 
-        async function enviarDadosNuvem(payload) {
+        function enviarDadosNuvem(payload) {
             if(API_URL.includes("SUA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI")) return;
-            try {
-                let res = await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+
+            window.processarRespostaEnvio = function(res) {
                 document.getElementById('statusSync').innerText = "Sincronizado";
-            } catch(e) {
-                console.error(e);
-                document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
+            };
+
+            let params = new URLSearchParams();
+            params.append('action', payload.action);
+            if(payload.id) params.append('id', payload.id);
+            if(payload.periodo) params.append('periodo', payload.periodo);
+            if(payload.item) {
+                for(let k in payload.item) {
+                    params.append(k, payload.item[k]);
+                }
             }
+            if(payload.lista) params.append('lista', JSON.stringify(payload.lista));
+            if(payload.chave) {
+                params.append('chave', payload.chave);
+                params.append('valor', payload.valor);
+            }
+            params.append('callback', 'processarRespostaEnvio');
+
+            let scriptAntigo = document.getElementById('jsonpSendScript');
+            if (scriptAntigo) scriptAntigo.remove();
+
+            let script = document.createElement('script');
+            script.id = 'jsonpSendScript';
+            script.src = `${API_URL}?${params.toString()}`;
+            script.onerror = function() {
+                document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
+            };
+            document.body.appendChild(script);
         }
 
         function inicializarPeriodos() {
@@ -731,7 +750,18 @@
             }
         }
 
-        async function fecharPeriodoAtual() {
+        function calcularProximoPeriodo(AAAAMM) {
+            let ano = parseInt(AAAAMM.substring(0, 4), 10);
+            let mes = parseInt(AAAAMM.substring(4, 6), 10);
+            mes++;
+            if (mes > 12) {
+                mes = 1;
+                ano++;
+            }
+            return "" + ano + (mes < 10 ? "0" + mes : mes);
+        }
+
+        function fecharPeriodoAtual() {
             if (periodosFechados.includes(periodoAtual)) {
                 alert("Este período já está fechado!");
                 return;
@@ -744,14 +774,16 @@
                     periodosFechados.push(periodoFechadoAgora);
                 }
                 
-                await enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) });
+                enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) });
 
-                let indexAtual = periodos.indexOf(periodoFechadoAgora);
-                if (indexAtual > 0) {
-                    periodoAtual = periodos[indexAtual - 1];
+                // Calcula automaticamente o próximo período (Ex: 202610 -> 202611)
+                let proximoPeriodo = calcularProximoPeriodo(periodoFechadoAgora);
+                if (!periodos.includes(proximoPeriodo)) {
+                    periodos.push(proximoPeriodo);
                 }
+                periodoAtual = proximoPeriodo;
 
-                alert(`Período ${periodoFechadoAgora} fechado com sucesso! O sistema avançou para o período ${periodoAtual}.`);
+                alert(`Período ${periodoFechadoAgora} fechado com sucesso! A tela foi atualizada para o próximo período: ${periodoAtual}.`);
                 inicializarPeriodos();
                 atualizarTabelaBaixas();
             } else {
