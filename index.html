@@ -549,82 +549,88 @@
             listaConvenios.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
         }
 
-        async function carregarDadosNuvem() {
-            try {
-                if(API_URL.includes("SUA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI")) {
-                    document.getElementById('statusSync').innerText = "Modo Local";
+        function carregarDadosNuvem() {
+            if(API_URL.includes("SUA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI")) {
+                document.getElementById('statusSync').innerText = "Modo Local";
+                ordenarConvenios();
+                inicializarPeriodos();
+                carregarSelectConvenios();
+                atualizarTabelaConvenios();
+                atualizarTabelaBaixas();
+                return;
+            }
+
+            window.processarDadosCarregados = function(json) {
+                try {
+                    baseDadosBaixas = {};
+                    if (json.baixas && json.baixas.length > 1) {
+                        for (let i = 1; i < json.baixas.length; i++) {
+                            let r = json.baixas[i];
+                            let per = r[0];
+                            if (per) {
+                                if (!baseDadosBaixas[per]) baseDadosBaixas[per] = [];
+                                periodos.push(per);
+                            }
+                            
+                            let dataLimpa = r[4] ? r[4].toString().split('T')[0] : '';
+
+                            if (per) {
+                                baseDadosBaixas[per].push({
+                                    id: r[1], convenio: r[2], notaFiscal: r[3], dataRec: dataLimpa,
+                                    vlrBruto: parseFloat(r[5])||0, vlrLiquido: parseFloat(r[6])||0,
+                                    tipo: r[7], cobrado: parseFloat(r[8])||0, recebido: parseFloat(r[9])||0,
+                                    glosa: parseFloat(r[10])||0, baixado: parseFloat(r[11])||0,
+                                    difBaixa: parseFloat(r[12])||0, obs: (r[13] && r[13] !== 'undefined') ? r[13] : ''
+                                });
+                            }
+                        }
+                    }
+                    
+                    if (json.convenios && json.convenios.length > 1) {
+                        let mapConv = {};
+                        for (let i = 1; i < json.convenios.length; i++) {
+                            let c = json.convenios[i];
+                            mapConv[c[0]] = { nome: c[0], cnpj: c[1], ativo: c[2] === true || c[2] === "true" || c[2] === "Verdadeiro" };
+                        }
+                        listaConvenios = Object.values(mapConv);
+                    }
+
                     ordenarConvenios();
+
+                    if (json.config && json.config.length > 1) {
+                        for (let i = 1; i < json.config.length; i++) {
+                            if (json.config[i][0] === "senhaExclusao" && json.config[i][1]) {
+                                senhaExclusao = json.config[i][1].toString().trim();
+                            }
+                            if (json.config[i][0] === "periodosFechados" && json.config[i][1]) {
+                                try {
+                                    periodosFechados = JSON.parse(json.config[i][1]);
+                                } catch(e) { periodosFechados = []; }
+                            }
+                        }
+                    }
+
                     inicializarPeriodos();
                     carregarSelectConvenios();
                     atualizarTabelaConvenios();
                     atualizarTabelaBaixas();
-                    return;
+                    document.getElementById('statusSync').innerText = "Sincronizado";
+                } catch (err) {
+                    console.error(err);
+                    document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
                 }
-                let res = await fetch(`${API_URL}?action=carregarTudo`);
-                let json = await res.json();
-                
-                baseDadosBaixas = {};
-                if (json.baixas && json.baixas.length > 1) {
-                    for (let i = 1; i < json.baixas.length; i++) {
-                        let r = json.baixas[i];
-                        let per = r[0];
-                        if (per) {
-                            if (!baseDadosBaixas[per]) baseDadosBaixas[per] = [];
-                            periodos.push(per);
-                        }
-                        
-                        let dataLimpa = r[4] ? r[4].toString().split('T')[0] : '';
+            };
 
-                        if (per) {
-                            baseDadosBaixas[per].push({
-                                id: r[1], convenio: r[2], notaFiscal: r[3], dataRec: dataLimpa,
-                                vlrBruto: parseFloat(r[5])||0, vlrLiquido: parseFloat(r[6])||0,
-                                tipo: r[7], cobrado: parseFloat(r[8])||0, recebido: parseFloat(r[9])||0,
-                                glosa: parseFloat(r[10])||0, baixado: parseFloat(r[11])||0,
-                                difBaixa: parseFloat(r[12])||0, obs: (r[13] && r[13] !== 'undefined') ? r[13] : ''
-                            });
-                        }
-                    }
-                }
-                
-                if (json.convenios && json.convenios.length > 1) {
-                    let mapConv = {};
-                    for (let i = 1; i < json.convenios.length; i++) {
-                        let c = json.convenios[i];
-                        mapConv[c[0]] = { nome: c[0], cnpj: c[1], ativo: c[2] === true || c[2] === "true" || c[2] === "Verdadeiro" };
-                    }
-                    listaConvenios = Object.values(mapConv);
-                }
+            let scriptAntigo = document.getElementById('jsonpScript');
+            if (scriptAntigo) scriptAntigo.remove();
 
-                ordenarConvenios();
-
-                if (json.config && json.config.length > 1) {
-                    for (let i = 1; i < json.config.length; i++) {
-                        if (json.config[i][0] === "senhaExclusao" && json.config[i][1]) {
-                            senhaExclusao = json.config[i][1].toString().trim();
-                        }
-                        if (json.config[i][0] === "periodosFechados" && json.config[i][1]) {
-                            try {
-                                periodosFechados = JSON.parse(json.config[i][1]);
-                            } catch(e) { periodosFechados = []; }
-                        }
-                    }
-                }
-
-                inicializarPeriodos();
-                carregarSelectConvenios();
-                atualizarTabelaConvenios();
-                atualizarTabelaBaixas();
-                document.getElementById('statusSync').innerText = "Sincronizado";
-            } catch (err) {
-                console.error(err);
+            let script = document.createElement('script');
+            script.id = 'jsonpScript';
+            script.src = `${API_URL}?action=carregarTudo&callback=processarDadosCarregados`;
+            script.onerror = function() {
                 document.getElementById('statusSync').innerText = "Erro ao Sincronizar";
-                ordenarConvenios();
-                inicializarPeriodos();
-                carregarSelectConvenios();
-                atualizarTabelaConvenios();
-                atualizarTabelaBaixas();
-            }
+            };
+            document.body.appendChild(script);
         }
 
         async function enviarDadosNuvem(payload) {
