@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Coopanest-PB — Gestão de Baixas e Convênios</title>
+    
+    <!-- Ícone e Configuração de Atalho/PWA para Favoritos e Celular -->
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="manifest" href="manifest.json">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -44,10 +50,12 @@
             flex-wrap: wrap;
         }
         .period-selector select, .period-selector button {
-            padding: 4px 8px;
+            padding: 5px 10px;
             border-radius: 4px;
             border: none;
             font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
         }
         .status-sync {
             font-size: 11px;
@@ -219,9 +227,9 @@
             <div class="period-selector">
                 <label style="color:white; margin:0; font-size:12px;">Período:</label>
                 <select id="selectPeriodo" onchange="mudarPeriodo(this.value)"></select>
-                <button onclick="criarNovoPeriodo()" style="background:var(--accent); color:white; font-weight:bold; cursor:pointer;">+ Novo</button>
-                <button onclick="fecharPeriodoAtual()" id="btnFecharPeriodo" style="background:#e76f51; color:white; font-weight:bold; cursor:pointer;" title="Fechar período com senha adm">🔒 Fechar</button>
-                <button onclick="abrirPeriodoAtual()" id="btnAbrirPeriodo" style="background:#2a9d8f; color:white; font-weight:bold; cursor:pointer;" title="Abrir período fechado com senha adm">🔓 Abrir Período</button>
+                <button onclick="criarNovoPeriodo()" style="background:var(--accent); color:white;">+ Novo</button>
+                <button onclick="fecharPeriodoAtual()" id="btnFecharPeriodo" style="background:#e76f51; color:white;" title="Fechar período com senha adm">🔒 Fechar Período</button>
+                <button onclick="abrirPeriodoAtual()" id="btnAbrirPeriodo" style="background:#2a9d8f; color:white;" title="Abrir período fechado com senha adm">🔓 Abrir Período</button>
             </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
@@ -512,7 +520,7 @@
         ];
 
         let periodos = ["202610", "202611"];
-        let periodoAtual = localStorage.getItem("coopanest_periodo_ativo") || "202610";
+        let periodoAtual = localStorage.getItem("coopanest_periodo_ativo") || "202611";
         let baseDadosBaixas = {};
         let periodosFechados = [];
         let senhaExclusao = "";
@@ -685,6 +693,17 @@
             periodos = [...new Set(todos.map(p => p ? p.toString().trim() : '').filter(p => p.length > 0))];
             periodos.sort().reverse();
 
+            if (periodosFechados.includes(periodoAtual)) {
+                let abertoEncontrado = periodos.find(p => !periodosFechados.includes(p));
+                if (abertoEncontrado) {
+                    periodoAtual = abertoEncontrado;
+                } else {
+                    let ultimoFechado = periodos[0];
+                    periodoAtual = calcularProximoPeriodo(ultimoFechado);
+                    if (!periodos.includes(periodoAtual)) periodos.push(periodoAtual);
+                }
+            }
+
             if (!periodos.includes(periodoAtual) && periodos.length > 0) {
                 periodoAtual = periodos[0];
             }
@@ -779,7 +798,6 @@
                     periodosFechados.push(periodoFechadoAgora);
                 }
                 
-                // Avança obrigatoriamente para o próximo período em aberto
                 let proximoPeriodo = calcularProximoPeriodo(periodoFechadoAgora);
                 if (!periodos.includes(proximoPeriodo)) {
                     periodos.push(proximoPeriodo);
@@ -801,16 +819,17 @@
                 alert("Este período já está aberto!");
                 return;
             }
-            let senha = prompt(`Para reabrir o período ${periodoAtual} e permitir edições, digite a senha mestre de administrador:`);
+            let senha = prompt(`Para reabrir o período ${periodoAtual} e permitir correções, digite a senha mestre de administrador:`);
             if (senha === null) return;
             if (senha.trim() === SENHA_MESTRE_ADM) {
                 let index = periodosFechados.indexOf(periodoAtual);
                 if (index > -1) {
                     periodosFechados.splice(index, 1);
                 }
+                localStorage.setItem("coopanest_periodo_ativo", periodoAtual);
 
                 enviarDadosNuvem({ action: "salvarConfig", chave: "periodosFechados", valor: JSON.stringify(periodosFechados) }, function() {
-                    alert(`Período ${periodoAtual} reaberto com sucesso para ajustes!`);
+                    alert(`Período ${periodoAtual} reaberto com sucesso para correções!`);
                     carregarDadosNuvem();
                 });
             } else {
